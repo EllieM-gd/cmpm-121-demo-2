@@ -97,6 +97,13 @@ button.selectedTool {
   border: 2px solid rgb(12, 12, 22);
 }
 
+cursor-icon {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  margin-right: 0.5em;
+}
+
 @media (prefers-color-scheme: light) {
   :root {
     color: #213547;

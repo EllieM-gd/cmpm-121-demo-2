@@ -9,7 +9,25 @@ let lineWidthControls: "Thin" | "Thick" = "Thin";
 
 const canvas = document.createElement("canvas");
 const ctx = canvas.getContext("2d")!; 
-const cursor = { active: false, x: 0, y: 0 }; //Mouse Cursor
+const cursor = { 
+    active: false, 
+    x: 0, 
+    y: 0, 
+    
+    updatePosition(e: MouseEvent) {
+        this.x = e.offsetX;
+        this.y = e.offsetY;
+        this.execute();
+    },
+
+    execute() {
+        canvas.dispatchEvent(new CustomEvent("drawing-changed"));
+        let lineWidth = 7;
+        if (lineWidthControls === "Thin") lineWidth = 4;
+        if ( this.active == false) ctx.fillRect(this.x, this.y, lineWidth, lineWidth);
+    },
+};  
+
 
 interface Point {
     localPoints: [{x: number, y: number}];
@@ -72,8 +90,8 @@ function disableMouse() {
 
 
 canvas.addEventListener("mousemove", (event) => {
+    updateMousePosition(event);
     if (cursor.active) {
-        updateMousePosition(event);
         points[points.length - 1].drag(cursor.x, cursor.y);
         //Dispatch the event
         canvas.dispatchEvent(new CustomEvent("drawing-changed"));
@@ -82,19 +100,24 @@ canvas.addEventListener("mousemove", (event) => {
 
 
 canvas.addEventListener("drawing-changed", () => {
-    //Clear Line
+    //Clear Lines
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    //Redraw Line
+    //Redraw Lines
     points.forEach((point) => {
         point.display(ctx);
         }
     );
-
 });
 
 function updateMousePosition(event: MouseEvent) {
-    cursor.x = event.offsetX;
-    cursor.y = event.offsetY;   
+    cursor.updatePosition(event);
+}
+
+function createButton(text: string){
+    const button = document.createElement("button");
+    button.innerHTML = text;
+    document.body.append(button);
+    return button;
 }
 
 const clearButton = createButton("clear");
@@ -113,30 +136,18 @@ undoButton.addEventListener("click", () => {
     canvas.dispatchEvent(new CustomEvent("drawing-changed"));
 });
 
-
 const redoButton = createButton("redo");
-
 redoButton.addEventListener("click", () => {
     const undoSavePoint = redoStack.pop();
     if (undoSavePoint) {
         points.push(undoSavePoint!);
-        undoStack.push(undoSavePoint);
-        //points.push(redoStack.pop()!);
-        
+        undoStack.push(undoSavePoint);        
     }
     canvas.dispatchEvent(new CustomEvent("drawing-changed"));
 });
 
-function createButton(text: string){
-    const button = document.createElement("button");
-    button.innerHTML = text;
-    document.body.append(button);
-    return button;
-}
-
 const thinLineButton = createButton("thin");
 thinLineButton.classList.add("selectedTool");
-
 thinLineButton.addEventListener("click", () => {
     disableMouse()
     lineWidthControls = "Thin";
@@ -145,7 +156,6 @@ thinLineButton.addEventListener("click", () => {
 });
 
 const thickLineButton = createButton("thick");
-
 thickLineButton.addEventListener("click", () => {
     disableMouse()
     lineWidthControls = "Thick";
