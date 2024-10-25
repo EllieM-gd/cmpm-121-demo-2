@@ -5,8 +5,7 @@ const app = document.querySelector<HTMLDivElement>("#app")!;
 
 document.title = APP_NAME;
 
-let mouseDownThisFrame = false;
-
+let lineWidthControls: "Thin" | "Thick" = "Thin";
 
 const canvas = document.createElement("canvas");
 const ctx = canvas.getContext("2d")!; 
@@ -20,11 +19,17 @@ interface Point {
 
 class LinePoint implements Point {
     localPoints: [{ x: number; y: number; }];
+    lineThickness: "Thick" | "Thin" = "Thin";
     constructor(x:number, y:number) {
         this.localPoints = [{x, y}];
+        this.lineThickness = lineWidthControls;
       }
     display(ctx: CanvasRenderingContext2D) {
-        ctx.lineWidth = 4;
+        if (this.lineThickness === "Thin") {
+            ctx.lineWidth = 3;
+        } else {
+            ctx.lineWidth = 7;
+        }
         ctx.beginPath();
         ctx.fill();
         for (let i = 1; i < this.localPoints.length; i++) {
@@ -57,15 +62,18 @@ canvas.addEventListener("mousedown", (event) => {
 });
 
 canvas.addEventListener("mouseup", () => {
-    cursor.active = false;
+    disableMouse()
 });
+
+function disableMouse() {
+    cursor.active = false;
+}
 
 
 
 canvas.addEventListener("mousemove", (event) => {
     if (cursor.active) {
         updateMousePosition(event);
-        //Move the point
         points[points.length - 1].drag(cursor.x, cursor.y);
         //Dispatch the event
         canvas.dispatchEvent(new CustomEvent("drawing-changed"));
@@ -89,57 +97,58 @@ function updateMousePosition(event: MouseEvent) {
     cursor.y = event.offsetY;   
 }
 
-const clearButton = document.createElement("button");
-clearButton.innerHTML = "clear";
-document.body.append(clearButton);
-
+const clearButton = createButton("clear");
 clearButton.addEventListener("click", () => {
     points.length = 0;
     undoStack.length = 0;
     redoStack.length = 0;
     canvas.dispatchEvent(new CustomEvent("drawing-changed"));
-
 });
 
-const undoButton = document.createElement("button");
-undoButton.innerHTML = "undo";
-document.body.append(undoButton);
-
+const undoButton = createButton("undo");
 undoButton.addEventListener("click", () => {
-    const lastPoint = undoStack.pop();
-    if (lastPoint) {
-        redoStack.push(lastPoint);
-    }
-    while (points.length) {
-        //If the last point is the same as the last point in the undo stack
-        if (points[points.length - 1] == lastPoint && points[points.length - 1] == lastPoint) {
-            break;
-        }
-        redoStack.push(points[points.length - 1]);
-        points.pop();
-    }
-
-    if (points.length) points.pop();
+    undoStack.pop();
+    if (points.length) redoStack.push(points.pop()!);
 
     canvas.dispatchEvent(new CustomEvent("drawing-changed"));
 });
 
 
-const redoButton = document.createElement("button");
-redoButton.innerHTML = "redo";
-document.body.append(redoButton);
+const redoButton = createButton("redo");
 
 redoButton.addEventListener("click", () => {
-    //Save the last point in the redo stack for the undo button
     const undoSavePoint = redoStack.pop();
     if (undoSavePoint) {
-        //Save the undo point and add it to the point stack
         points.push(undoSavePoint!);
         undoStack.push(undoSavePoint);
-        //Add all the points from the redo stack to the points array
-        while (redoStack.length) {
-            points.push(redoStack.pop()!);
-        }
+        //points.push(redoStack.pop()!);
+        
     }
     canvas.dispatchEvent(new CustomEvent("drawing-changed"));
+});
+
+function createButton(text: string){
+    const button = document.createElement("button");
+    button.innerHTML = text;
+    document.body.append(button);
+    return button;
+}
+
+const thinLineButton = createButton("thin");
+thinLineButton.classList.add("selectedTool");
+
+thinLineButton.addEventListener("click", () => {
+    disableMouse()
+    lineWidthControls = "Thin";
+    thinLineButton.classList.add("selectedTool");
+    thickLineButton.classList.remove("selectedTool");
+});
+
+const thickLineButton = createButton("thick");
+
+thickLineButton.addEventListener("click", () => {
+    disableMouse()
+    lineWidthControls = "Thick";
+    thickLineButton.classList.add("selectedTool");
+    thinLineButton.classList.remove("selectedTool");
 });

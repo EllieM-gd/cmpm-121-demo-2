@@ -25,9 +25,11 @@ a:hover {
 body {
   margin: 0;
   display: flex;
-  place-items: center;
+  flex-direction: column;
+  align-items: flex-start; /* Align items to the start of the flex container */
   min-width: 320px;
   min-height: 100vh;
+  padding-left: 1rem; /* Add some padding to the left side */
 }
 
 h1 {
@@ -88,6 +90,11 @@ button:hover {
 button:focus,
 button:focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
+}
+
+button.selectedTool {
+  background-color: rgba(255, 255, 255, 0);
+  border: 2px solid rgb(12, 12, 22);
 }
 
 @media (prefers-color-scheme: light) {
