@@ -13,20 +13,47 @@ const ctx = canvas.getContext("2d")!;
 const cursor = { active: false, x: 0, y: 0 }; //Mouse Cursor
 
 interface Point {
-    x: number;
-    y: number;
+    localPoints: [{x: number, y: number}];
+    display(context: CanvasRenderingContext2D): void;
+    drag(x: number, y: number): void;
 }
 
-const points: Point[] = [];
-const undoStack: Point[] = [];
-const redoStack: Point[] = [];
+class LinePoint implements Point {
+    localPoints: [{ x: number; y: number; }];
+    constructor(x:number, y:number) {
+        this.localPoints = [{x, y}];
+      }
+    display(ctx: CanvasRenderingContext2D) {
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.fill();
+        for (let i = 1; i < this.localPoints.length; i++) {
+            ctx.lineTo(this.localPoints[i].x, this.localPoints[i].y);
+        }
+        ctx.stroke();
+        ctx.closePath();
+      }
+      drag(x:number, y:number) { 
+        this.localPoints.push({x, y});
+      }
+
+}
+
+
+const points: LinePoint[] = [];
+const undoStack: LinePoint[] = [];
+const redoStack: LinePoint[] = [];
 
 app.append(canvas)
 
 
-canvas.addEventListener("mousedown", () => {
+canvas.addEventListener("mousedown", (event) => {
     cursor.active = true;
-    mouseDownThisFrame = true;
+    updateMousePosition(event);
+    const tempLinePoint = new LinePoint(cursor.x, cursor.y);
+    points.push(tempLinePoint);
+    undoStack.push(tempLinePoint);
+    redoStack.length = 0;
 });
 
 canvas.addEventListener("mouseup", () => {
@@ -37,15 +64,9 @@ canvas.addEventListener("mouseup", () => {
 
 canvas.addEventListener("mousemove", (event) => {
     if (cursor.active) {
-        //If the mouse was down this frame
-        if (mouseDownThisFrame) {
-            //Push this to undo stack & Clear the redo stack
-            undoStack.push({ x: event.offsetX, y: event.offsetY });
-            redoStack.length = 0;
-            mouseDownThisFrame = false;
-        }
-        //Add the point to the points array
-        points.push({ x: event.offsetX, y: event.offsetY });
+        updateMousePosition(event);
+        //Move the point
+        points[points.length - 1].drag(cursor.x, cursor.y);
         //Dispatch the event
         canvas.dispatchEvent(new CustomEvent("drawing-changed"));
     }
@@ -56,27 +77,28 @@ canvas.addEventListener("drawing-changed", () => {
     //Clear Line
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     //Redraw Line
-    points.forEach((point, index) => {
-        ctx.beginPath();
-        ctx.arc(point.x, point.y, 5, 0, Math.PI * 2);
-        ctx.fill();
-        //If not the last point
-        if (index < points.length - 1) {
-            ctx.beginPath();
-            ctx.moveTo(point.x, point.y);
-            ctx.lineTo(points[index + 1].x, points[index + 1].y);
-            ctx.stroke();
+    points.forEach((point) => {
+        point.display(ctx);
         }
-    });
+    );
 
 });
+
+function updateMousePosition(event: MouseEvent) {
+    cursor.x = event.offsetX;
+    cursor.y = event.offsetY;   
+}
 
 const clearButton = document.createElement("button");
 clearButton.innerHTML = "clear";
 document.body.append(clearButton);
 
 clearButton.addEventListener("click", () => {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    points.length = 0;
+    undoStack.length = 0;
+    redoStack.length = 0;
+    canvas.dispatchEvent(new CustomEvent("drawing-changed"));
+
 });
 
 const undoButton = document.createElement("button");
@@ -90,7 +112,7 @@ undoButton.addEventListener("click", () => {
     }
     while (points.length) {
         //If the last point is the same as the last point in the undo stack
-        if (points[points.length - 1].x == lastPoint?.x && points[points.length - 1].y == lastPoint?.y) {
+        if (points[points.length - 1] == lastPoint && points[points.length - 1] == lastPoint) {
             break;
         }
         redoStack.push(points[points.length - 1]);
