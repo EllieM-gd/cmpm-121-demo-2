@@ -18,14 +18,11 @@ const cursor = {
     updatePosition(e: MouseEvent) {
         const canvas = e.target as HTMLCanvasElement;
         const rect = canvas.getBoundingClientRect();
-        const scale = canvas.width / rect.width;
-        console.log(rect);
         
-        this.x = (e.clientX - rect.left) * scale;
-        this.y = (e.clientY - rect.top) * scale;
-        console.log(this.x, this.y);
-        this.execute();
+        this.x = e.offsetX / rect.width * canvas.width;
+        this.y = e.offsetY / rect.height * canvas.height + 10;
 
+        this.execute();
     },
 
     setSticker(string: string) {
@@ -90,7 +87,6 @@ class StickerPoint implements Point {
       }
       
     drag(x:number, y:number) { 
-        //Move the sticker to the new position
         this.localPoints[0].x = x;
         this.localPoints[0].y = y;
     }
@@ -106,41 +102,36 @@ app.append(canvas)
 
 
 canvas.addEventListener("mousedown", (event) => {
-    cursor.active = true;
     updateMousePosition(event);
     if (cursor.sticker === "Draw") {
         const tempLinePoint = new LinePoint(cursor.x, cursor.y);
         points.push(tempLinePoint);
         undoStack.push(tempLinePoint);
-        redoStack.length = 0;
     }
     else {
         const tempStickerPoint = new StickerPoint(cursor.x, cursor.y);
         points.push(tempStickerPoint);
         undoStack.push(tempStickerPoint);
-        redoStack.length = 0;
     }
+    redoStack.length = 0;
+    cursor.active = true;
 });
 
 canvas.addEventListener("mouseup", () => {
-    disableMouse()
+    disableMouseIsActive()
 });
 
-function disableMouse() {
+function disableMouseIsActive() {
     cursor.active = false;
 }
-
-
 
 canvas.addEventListener("mousemove", (event) => {
     updateMousePosition(event);
     if (cursor.active) {
         points[points.length - 1].drag(cursor.x, cursor.y);
-        //Dispatch the event
         canvas.dispatchEvent(new CustomEvent("drawing-changed"));
     }
 });
-
 
 canvas.addEventListener("drawing-changed", () => {
     //Clear Lines
@@ -156,6 +147,8 @@ function updateMousePosition(event: MouseEvent) {
     cursor.updatePosition(event);
 }
 
+// -------- BUTTONS --------
+// -------------------------
 function createButton(text: string){
     const button = document.createElement("button");
     button.innerHTML = text;
@@ -204,7 +197,7 @@ redoButton.addEventListener("click", () => {
 const thinLineButton = createButton("thin");
 thinLineButton.classList.add("selectedTool");
 thinLineButton.addEventListener("click", () => {
-    disableMouse()
+    disableMouseIsActive()
     lineWidthControls = "Thin";
     thinLineButton.classList.add("selectedTool");
     thickLineButton.classList.remove("selectedTool");
@@ -212,7 +205,7 @@ thinLineButton.addEventListener("click", () => {
 
 const thickLineButton = createButton("thick");
 thickLineButton.addEventListener("click", () => {
-    disableMouse()
+    disableMouseIsActive()
     lineWidthControls = "Thick";
     thickLineButton.classList.add("selectedTool");
     thinLineButton.classList.remove("selectedTool");
@@ -224,13 +217,30 @@ buttonList[1] = createStickerButton("🐟");
 buttonList[2] = createStickerButton("💩");
 buttonList[3] = createStickerButton("❤️");
 buttonList[4] = createStickerButton("Draw");
+buttonList[5] = createCustomStickerButton();
 
 function setButtonAsSelected(string: string) {
+    let found = false;
     buttonList.forEach(button => {
         if (button.innerHTML === string) {
+            found = true;
             button.classList.add("selectedTool");
         } else {
             button.classList.remove("selectedTool");
         }
     });
+    if (!found) {
+        buttonList[5].classList.add("selectedTool");
+    }
+}
+
+function createCustomStickerButton(){
+    const button = document.createElement("button");
+    button.innerHTML = "Custom";
+    stickerDiv.append(button);
+    button.addEventListener("click", () => {
+        const text = prompt("Enter a custom sticker");
+        if (text != null) cursor.setSticker(text);
+    });
+    return button;
 }
