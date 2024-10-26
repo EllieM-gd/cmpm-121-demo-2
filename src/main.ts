@@ -6,6 +6,7 @@ const app = document.querySelector<HTMLDivElement>("#app")!;
 document.title = APP_NAME;
 
 let lineWidthControls: "Thin" | "Thick" = "Thin";
+let globalRotation = 0;
 
 const canvas = document.createElement("canvas");
 const ctx = canvas.getContext("2d")!; 
@@ -43,10 +44,17 @@ const cursor = {
             lineWidth = 4;
             ctx.font = "15px Arial";
         }
-        if ( this.active == false) {
-           if (this.sticker == "Draw") ctx.fillRect(this.x, this.y, lineWidth, lineWidth);
-           else ctx.fillText(this.sticker, this.x, this.y);
 
+        if (this.active == false) {
+            ctx.save(); // Save the current state
+            ctx.translate(this.x, this.y); // Move to the sticker's position
+            ctx.rotate((globalRotation * Math.PI) / 180); // Rotate the context
+            ctx.translate(-this.x, -this.y); // Move back
+
+            if (this.sticker == "Draw") ctx.fillRect(this.x, this.y, lineWidth, lineWidth);
+            else ctx.fillText(this.sticker, this.x, this.y);
+
+            ctx.restore(); // Restore the previous state
         }
     },
 };  
@@ -89,15 +97,24 @@ class StickerPoint implements Point {
     localSticker: string = cursor.sticker;
     localPoints: [{ x: number; y: number; }];
     lineThickness: "Thick" | "Thin" = "Thin";
+    rotation: number = globalRotation;
     constructor(x:number, y:number) {
         this.localPoints = [{x, y}];
         this.lineThickness = lineWidthControls;
+        this.rotation = globalRotation;
       }
     display(ctx: CanvasRenderingContext2D) {
+        ctx.save(); // Save the current state
+        ctx.translate(this.localPoints[0].x, this.localPoints[0].y); // Move to the sticker's position
+        ctx.rotate((this.rotation * Math.PI) / 180); // Rotate the context
+        ctx.translate(-this.localPoints[0].x, -this.localPoints[0].y); // Move back
+
         if (this.lineThickness === "Thin") ctx.font = "15px Arial";
         else ctx.font = "30px Arial";
+        
         ctx.fillText(this.localSticker, this.localPoints[0].x, this.localPoints[0].y);
-      }
+        ctx.restore(); // Restore the previous state
+    }
       
     drag(x:number, y:number) { 
         this.localPoints[0].x = x;
@@ -244,7 +261,16 @@ exportButton.addEventListener("click", () => {
     anchor.click();
 });
 
-
+const rotationSlider = document.createElement("input");
+rotationSlider.type = "range";
+rotationSlider.min = "0";
+rotationSlider.max = "360";
+rotationSlider.value = "0";
+rotationSlider.step = "1";
+rotationSlider.addEventListener("input", () => {
+    globalRotation = parseInt(rotationSlider.value);
+});
+stickerDiv.append(rotationSlider);
 
 // STICKER BUTTONS 
 const buttonList: HTMLButtonElement[] = [];
