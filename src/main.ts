@@ -37,8 +37,12 @@ const cursor = {
 
     execute() {
         canvas.dispatchEvent(new CustomEvent("drawing-changed"));
-        let lineWidth = 7;
-        if (lineWidthControls === "Thin") lineWidth = 4;
+        let lineWidth = 8;
+        ctx.font = "30px Arial";
+        if (lineWidthControls === "Thin"){ 
+            lineWidth = 4;
+            ctx.font = "15px Arial";
+        }
         if ( this.active == false) {
            if (this.sticker == "Draw") ctx.fillRect(this.x, this.y, lineWidth, lineWidth);
            else ctx.fillText(this.sticker, this.x, this.y);
@@ -84,10 +88,14 @@ class LinePoint implements Point {
 class StickerPoint implements Point {
     localSticker: string = cursor.sticker;
     localPoints: [{ x: number; y: number; }];
+    lineThickness: "Thick" | "Thin" = "Thin";
     constructor(x:number, y:number) {
         this.localPoints = [{x, y}];
+        this.lineThickness = lineWidthControls;
       }
     display(ctx: CanvasRenderingContext2D) {
+        if (this.lineThickness === "Thin") ctx.font = "15px Arial";
+        else ctx.font = "30px Arial";
         ctx.fillText(this.localSticker, this.localPoints[0].x, this.localPoints[0].y);
       }
       
@@ -168,6 +176,7 @@ function createStickerButton(text: string){
     button.innerHTML = text;
     stickerDiv.append(button);
     button.addEventListener("click", () => {
+        disableMouseIsActive();
         cursor.setSticker(text);
     });
     return button;
