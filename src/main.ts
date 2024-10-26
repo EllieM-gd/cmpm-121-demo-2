@@ -12,19 +12,36 @@ const ctx = canvas.getContext("2d")!;
 const cursor = { 
     active: false, 
     x: 0, 
-    y: 0, 
+    y: 0,
+    sticker: "🤡",
     
     updatePosition(e: MouseEvent) {
-        this.x = e.offsetX;
-        this.y = e.offsetY;
+        const canvas = e.target as HTMLCanvasElement;
+        const rect = canvas.getBoundingClientRect();
+        const scale = canvas.width / rect.width;
+        console.log(rect);
+        
+        this.x = (e.clientX - rect.left) * scale;
+        this.y = (e.clientY - rect.top) * scale;
+        console.log(this.x, this.y);
         this.execute();
+
+    },
+
+    setSticker(string: string) {
+        this.sticker = string;
+        setButtonAsSelected(string);
     },
 
     execute() {
         canvas.dispatchEvent(new CustomEvent("drawing-changed"));
         let lineWidth = 7;
         if (lineWidthControls === "Thin") lineWidth = 4;
-        if ( this.active == false) ctx.fillRect(this.x, this.y, lineWidth, lineWidth);
+        if ( this.active == false) {
+           if (this.sticker == "Draw") ctx.fillRect(this.x, this.y, lineWidth, lineWidth);
+           else ctx.fillText(this.sticker, this.x, this.y);
+
+        }
     },
 };  
 
@@ -62,10 +79,28 @@ class LinePoint implements Point {
 
 }
 
+class StickerPoint implements Point {
+    localSticker: string = cursor.sticker;
+    localPoints: [{ x: number; y: number; }];
+    constructor(x:number, y:number) {
+        this.localPoints = [{x, y}];
+      }
+    display(ctx: CanvasRenderingContext2D) {
+        ctx.fillText(this.localSticker, this.localPoints[0].x, this.localPoints[0].y);
+      }
+      
+    drag(x:number, y:number) { 
+        //Move the sticker to the new position
+        this.localPoints[0].x = x;
+        this.localPoints[0].y = y;
+    }
 
-const points: LinePoint[] = [];
-const undoStack: LinePoint[] = [];
-const redoStack: LinePoint[] = [];
+}
+
+
+const points: Point[] = [];
+const undoStack: Point[] = [];
+const redoStack: Point[] = [];
 
 app.append(canvas)
 
@@ -73,10 +108,18 @@ app.append(canvas)
 canvas.addEventListener("mousedown", (event) => {
     cursor.active = true;
     updateMousePosition(event);
-    const tempLinePoint = new LinePoint(cursor.x, cursor.y);
-    points.push(tempLinePoint);
-    undoStack.push(tempLinePoint);
-    redoStack.length = 0;
+    if (cursor.sticker === "Draw") {
+        const tempLinePoint = new LinePoint(cursor.x, cursor.y);
+        points.push(tempLinePoint);
+        undoStack.push(tempLinePoint);
+        redoStack.length = 0;
+    }
+    else {
+        const tempStickerPoint = new StickerPoint(cursor.x, cursor.y);
+        points.push(tempStickerPoint);
+        undoStack.push(tempStickerPoint);
+        redoStack.length = 0;
+    }
 });
 
 canvas.addEventListener("mouseup", () => {
@@ -120,10 +163,22 @@ function createButton(text: string){
     return button;
 }
 
+const stickerDiv = document.createElement("div");
+app.append(stickerDiv);
+function createStickerButton(text: string){
+    const button = document.createElement("button");
+    button.innerHTML = text;
+    stickerDiv.append(button);
+    button.addEventListener("click", () => {
+        cursor.setSticker(text);
+    });
+    return button;
+}
+
 const clearButton = createButton("clear");
 clearButton.addEventListener("click", () => {
-    points.length = 0;
     undoStack.length = 0;
+    points.length = 0;
     redoStack.length = 0;
     canvas.dispatchEvent(new CustomEvent("drawing-changed"));
 });
@@ -162,3 +217,20 @@ thickLineButton.addEventListener("click", () => {
     thickLineButton.classList.add("selectedTool");
     thinLineButton.classList.remove("selectedTool");
 });
+const buttonList: HTMLButtonElement[] = [];
+buttonList[0] = createStickerButton("🤡");
+buttonList[0].classList.add("selectedTool");
+buttonList[1] = createStickerButton("🐟");
+buttonList[2] = createStickerButton("💩");
+buttonList[3] = createStickerButton("❤️");
+buttonList[4] = createStickerButton("Draw");
+
+function setButtonAsSelected(string: string) {
+    buttonList.forEach(button => {
+        if (button.innerHTML === string) {
+            button.classList.add("selectedTool");
+        } else {
+            button.classList.remove("selectedTool");
+        }
+    });
+}
