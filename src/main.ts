@@ -9,6 +9,11 @@ let lineWidthControls: "Thin" | "Thick" = "Thin";
 
 const canvas = document.createElement("canvas");
 const ctx = canvas.getContext("2d")!; 
+const scale = globalThis.devicePixelRatio;
+canvas.width = 256 * scale;
+canvas.height = 256 * scale;
+ctx.scale(scale, scale);
+
 const cursor = { 
     active: false, 
     x: 0, 
@@ -210,6 +215,29 @@ thickLineButton.addEventListener("click", () => {
     thickLineButton.classList.add("selectedTool");
     thinLineButton.classList.remove("selectedTool");
 });
+const exportButton = createButton("export");
+exportButton.addEventListener("click", () => {
+    //Create new canvas
+    const tempCanvas = document.createElement("canvas");
+    tempCanvas.width = 1024;
+    tempCanvas.height = 1024;
+    //Create new context
+    const tempCtx = tempCanvas.getContext("2d")!;
+    tempCtx.scale(4, 4);
+    //Fill new context
+    points.forEach((point) => {
+        point.display(tempCtx);
+    });
+    //Handle Download
+    const anchor = document.createElement("a");
+    anchor.href = tempCanvas.toDataURL("image/png");
+    anchor.download = "sketch.png";
+    anchor.click();
+});
+
+
+
+// STICKER BUTTONS 
 const buttonList: HTMLButtonElement[] = [];
 buttonList[0] = createStickerButton("🤡");
 buttonList[0].classList.add("selectedTool");
